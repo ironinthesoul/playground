@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Sierpiński gasket</title>
+    <meta name="description" content="Sierpiński gasket">
+    <meta name="author" content="Michael">
+
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.3.1/lib/p5.js"></script>
+    <script>
+        // Contructing a Sierpiński gasket using the chaos game method.
+        // Create a triangle. Place a random point on the canvas. Randomly select a triangle vertex and move your point half
+        // the distance between its current location and the chosen vertex. Repeat 100,000 times.
+        // https://en.wikipedia.org/wiki/Sierpi%C5%84ski_triangle
+        // Stephen Wolfram has some cool things to say about complex patterns evolving from simple instructions in
+        // his book A New Kind of Science
+
+        let movex = 0;
+        let movey = 0;
+        let rando = 0;
+
+        let currentx = 0;
+        let currenty = 0;
+        let allpoints = [];
+
+        let points = [
+            [800, 50],
+            [300, 850],
+            [1300, 850]
+        ];
+
+        function setup() {
+            createCanvas(1600, 1200);
+            background(0);
+            frameRate(50);
+            currentx = int(random(400, 1201));
+            currenty = int(random(50, 851));
+            allpoints.push(point(currentx, currenty));
+
+            stroke('white');
+            strokeWeight(5);
+
+            for(p of points) {
+                point(p[0], p[1]);
+            }
+
+        }
+        function draw() {
+            strokeWeight(1);
+            for (let i = 0; i < 10; i++) {
+                rando = int(random(0, 3));
+                currentx = (currentx + points[rando][0]) / 2;
+                currenty = (currenty + points[rando][1]) / 2;
+                allpoints.push(point(currentx, currenty));
+            }
+        }
+
+    </script>
+</head>
+<body>
+</body>
+</html>
