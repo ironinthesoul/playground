@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Flocking simulation</title>
+    <meta name="description" content="Flocking simulation">
+    <meta name="author" content="Michael">
+
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.3.1/lib/p5.js"></script>
+    <script>
+
+    let flock = [];
+    let alignment_slider, cohesion_slider, separation_slider;
+    let sprite_img;
+    let total_boids = 100;
+    let animating = true;
+
+
+    class Sprite {
+        constructor(position) {
+            this.speed = random(0.4, 0.7);
+            this.index = 0;
+            this.position = position;
+
+            this.sprite_data = [
+                {
+                    "name": "bird_0",
+                    "position": {
+                        "x": 0,
+                        "y": 0,
+                        "w": 30,
+                        "h": 15
+                    }
+                },
+                {
+                    "name": "bird_1",
+                    "position": {
+                        "x": 30,
+                        "y": 0,
+                        "w": 30,
+                        "h": 15
+                    }
+                },
+                {
+                    "name": "bird_2",
+                    "position": {
+                        "x": 60,
+                        "y": 0,
+                        "w": 30,
+                        "h": 15
+                    }
+                },
+                {
+                    "name": "bird_3",
+                    "position": {
+                        "x": 90,
+                        "y": 0,
+                        "w": 30,
+                        "h": 15
+                    }
+                },
+                {
+                    "name": "bird_4",
+                    "position": {
+                        "x": 120,
+                        "y": 0,
+                        "w": 30,
+                        "h": 15
+                    }
+                },
+                {
+                    "name": "bird_5",
+                    "position": {
+                        "x": 150,
+                        "y": 0,
+                        "w": 30,
+                        "h": 15
+                    }
+                },
+            ];
+
+            this.sprite_animation = [];
+            for(let sprite of this.sprite_data) {
+                let image = sprite_img.get(sprite.position.x, sprite.position.y, sprite.position.w, sprite.position.h)
+                this.sprite_animation.push(image);
+            }
+
+
+
+        }
+
+        show(position, velocity) {
+
+            push();
+            translate(position.x, position.y);
+            rotate(velocity.heading() + radians(90));
+            imageMode(CENTER);
+            image(this.sprite_animation[floor(this.index) % this.sprite_animation.length], 0, 0);
+            pop();
+
+
+
+
+
+        }
+
+        animate() {
+            this.index += this.speed;
+        }
+
+    }
+
+
+        class Boid {
+            constructor() {
+                this.position = createVector(random(width), random(height));
+                this.acceleration = createVector();
+
+                // Give the boid a random velocity
+                this.velocity = p5.Vector.random2D();
+                this.velocity.setMag(random(1, 3));
+
+                // Limit the amount of effect steering force has
+                this.max_steering = 0.1;
+
+                // Set the maximum speed of a boid
+                this.max_speed = 4;
+
+                this.sprite = new Sprite(this.position);
+
+
+            }
+
+            generateBoid() {
+
+                this.sprite.show(this.position, this.velocity);
+                this.sprite.animate();
+
+                // let triangle_size = 10;
+                // strokeWeight(1);
+                // stroke(255);
+                // fill(0);
+                //
+                // let x = this.position.x;
+                // let y = this.position.y;
+                //
+                // push();
+                // translate(x, y);
+                // rotate(this.velocity.heading() - radians(90));
+                // triangle(
+                //     0,
+                //     0,
+                //     triangle_size,
+                //     0,
+                //     triangle_size / 2,
+                //     triangle_size * 1.2
+                // );
+                // pop();
+
+            }
+
+            update() {
+                this.position.add(this.velocity);
+                this.velocity.add(this.acceleration);
+                this.velocity.limit(this.max_speed);
+
+                // Set the acceleration to zero before recalculating it to stop it accumulating
+                this.acceleration.set(0,0);
+
+            }
+
+            flock(boids) {
+                let alignment = this.steeringForce(boids);
+                // let cohesion = this.cohesion(boids);
+                this.acceleration.add(alignment);
+                // this.acceleration.add(cohesion);
+            }
+
+            wrap() {
+                if(this.position.x > width) this.position.x = 0;
+                else if(this.position.x < 0) this.position.x = width;
+                if(this.position.y > height) this.position.y = 0;
+                else if(this.position.y < 0) this.position.y = height;
+            }
+
+
+            steeringForce(boids) {
+                // This sets the flocking alignment and cohesion
+
+                //Set the circular proximity for the boids affecting velocity
+                let proximity = 50;
+                let proximate_boids = 0;
+
+
+                // Create a steering force - set to zero
+                let alignment = createVector();
+                let cohesion = createVector();
+                let separation = createVector();
+
+                // Update the steering force to be the average velocity of proximate boids
+                for(let a_boid of boids) {
+                    // See how far away the proximate boid is from this
+                    let distance = dist(this.position.x, this.position.y, a_boid.position.x, a_boid.position.y);
+
+                    // If the proximate boid is not this boid and it is in proximity then add its velocity
+                    if(a_boid != this && distance < proximity) {
+
+                        alignment.add(a_boid.velocity);
+
+                        cohesion.add(a_boid.position);
+
+                        // Create a vector force pointing away from the proximate boid
+                        let difference =  p5.Vector.sub(this.position, a_boid.position);
+                        //Make the force inversely proportional to the distance from this
+                        difference.div(distance);
+
+                        separation.add(difference);
+
+                        proximate_boids++;
+                    }
+                }
+
+                if(proximate_boids) {
+                    alignment.div(proximate_boids);
+                    alignment.setMag(this.max_speed);
+                    alignment.sub(this.velocity);
+                    alignment.limit(this.max_steering)
+
+                    cohesion.div(proximate_boids);
+                    cohesion.sub(this.position);
+                    cohesion.setMag(this.max_speed);
+                    cohesion.sub(this.velocity);
+                    cohesion.limit(this.max_steering)
+
+                    separation.div(proximate_boids);
+                    separation.setMag(this.max_speed);
+                    separation.sub(this.velocity);
+                    separation.limit(this.max_steering)
+
+                }
+
+
+
+
+
+
+                alignment.mult(alignment_slider.value());
+                cohesion.mult(cohesion_slider.value());
+                separation.mult(separation_slider.value());
+
+
+                alignment.add(cohesion);
+                alignment.add(separation);
+
+                return alignment;
+            }
+
+        }
+
+
+        function preload() {
+            sprite_img = loadImage("assets/img/flappy_bird.png");
+        }
+
+
+        function setup() {
+            createCanvas(1200, 900);
+
+            alignment_slider = createSlider(0, 5, 1, 0.1);
+            cohesion_slider = createSlider(0, 5, 1, 0.1);
+            separation_slider = createSlider(0, 5, 1, 0.1);
+
+            alignment_slider.position(100, 920);
+            cohesion_slider.position(400, 920);
+            separation_slider.position(700, 920);
+
+            let alignment_div = createDiv('Alignment:');
+            alignment_div.style('font-size', '16px');
+            alignment_div.position(20, 920);
+
+            let cohesion_div = createDiv('Cohesion:');
+            cohesion_div.style('font-size', '16px');
+            cohesion_div.position(320, 920);
+
+            let separation_div = createDiv('Separation:');
+            separation_div.style('font-size', '16px');
+            separation_div.position(620, 920);
+
+            for(let i=0; i < total_boids; i++) {
+                flock.push(new Boid());
+            }
+
+            let loop_button = createButton('Toggle animation');
+            loop_button.position(1050, 920);
+            loop_button.mousePressed(toggleLoop);
+
+        }
+
+        function draw() {
+
+            background(10, 70, 170);
+
+            for(let boid of flock) {
+                boid.wrap();
+                boid.flock(flock);
+                boid.update();
+                boid.generateBoid();
+            }
+
+        }
+
+        function toggleLoop() {
+            animating = !animating;
+            animating ? loop() : noLoop();
+        }
+
+
+
+
+    </script>
+</head>
+<body>
+</body>
+</html>
