@@ -28,60 +28,77 @@
                     "position": {
                         "x": 0,
                         "y": 0,
-                        "w": 30,
-                        "h": 15
+                        "w": 80,
+                        "h": 40
                     }
                 },
                 {
                     "name": "bird_1",
                     "position": {
-                        "x": 30,
+                        "x": 80,
                         "y": 0,
-                        "w": 30,
-                        "h": 15
+                        "w": 80,
+                        "h": 40
                     }
                 },
                 {
                     "name": "bird_2",
                     "position": {
-                        "x": 60,
+                        "x": 160,
                         "y": 0,
-                        "w": 30,
-                        "h": 15
+                        "w": 80,
+                        "h": 40
                     }
                 },
                 {
                     "name": "bird_3",
                     "position": {
-                        "x": 90,
+                        "x": 240,
                         "y": 0,
-                        "w": 30,
-                        "h": 15
+                        "w": 80,
+                        "h": 40
                     }
                 },
                 {
                     "name": "bird_4",
                     "position": {
-                        "x": 120,
+                        "x": 320,
                         "y": 0,
-                        "w": 30,
-                        "h": 15
+                        "w": 80,
+                        "h": 40
                     }
                 },
                 {
                     "name": "bird_5",
                     "position": {
-                        "x": 150,
+                        "x": 400,
                         "y": 0,
-                        "w": 30,
-                        "h": 15
+                        "w": 80,
+                        "h": 40
                     }
                 },
             ];
 
             this.sprite_animation = [];
             for(let sprite of this.sprite_data) {
-                let image = sprite_img.get(sprite.position.x, sprite.position.y, sprite.position.w, sprite.position.h)
+
+                let base_height = 40;
+                let scale = floor(random(25, 50));
+
+                let size = int(base_height * scale / 100);
+
+                let x = sprite.position.x;
+                let y = sprite.position.y;
+                let w = sprite.position.w;
+                let h = sprite.position.h;
+
+                let image = sprite_img.get(x, y, w, h);
+
+                image.resize(0, size);
+
+
+
+
                 this.sprite_animation.push(image);
             }
 
@@ -96,6 +113,8 @@
             rotate(velocity.heading() + radians(90));
             imageMode(CENTER);
             image(this.sprite_animation[floor(this.index) % this.sprite_animation.length], 0, 0);
+
+
             pop();
 
 
