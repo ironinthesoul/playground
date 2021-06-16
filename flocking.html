@@ -15,9 +15,9 @@
     let total_boids = 100;
     let animating = true;
 
-
     class Sprite {
         constructor(position) {
+
             this.speed = random(0.4, 0.7);
             this.index = 0;
             this.position = position;
@@ -106,13 +106,26 @@
 
         }
 
-        show(position, velocity) {
+        show(position, velocity, name) {
+
+
 
             push();
             translate(position.x, position.y);
             rotate(velocity.heading() + radians(90));
             imageMode(CENTER);
             image(this.sprite_animation[floor(this.index) % this.sprite_animation.length], 0, 0);
+
+            if(name != false) {
+                textAlign(CENTER, CENTER);
+                fill(255, 0, 0);
+                text(name, 0, 20);
+                strokeWeight(6);
+                stroke(255, 0, 0);
+                point(0, 0);
+
+            }
+
 
 
             pop();
@@ -131,7 +144,10 @@
 
 
         class Boid {
-            constructor() {
+            constructor(name=0) {
+
+                this.name = name;
+
                 this.position = createVector(random(width), random(height));
                 this.acceleration = createVector();
 
@@ -152,7 +168,7 @@
 
             generateBoid() {
 
-                this.sprite.show(this.position, this.velocity);
+                this.sprite.show(this.position, this.velocity, this.name);
                 this.sprite.animate();
 
                 // let triangle_size = 10;
@@ -306,7 +322,10 @@
             separation_div.position(620, 920);
 
             for(let i=0; i < total_boids; i++) {
-                flock.push(new Boid());
+                if(i==0) name = "BB";
+                else name = 0;
+
+                flock.push(new Boid(name));
             }
 
             let loop_button = createButton('Toggle animation');

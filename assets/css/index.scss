@@ -1,0 +1,25 @@
+
+body {
+    font-size: 16px;
+}
+
+#hero {
+    background-image: linear-gradient(to right bottom, #bd00c8, #a13ddb, #8056e9, #5667f1, #0075f4);
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+    border-bottom-left-radius: 1rem;
+    border-bottom-right-radius: 1rem;
+
+    h1 {
+        text-align: center;
+        color: #fff;
+    }
+}
+
+.list-group-item-action {
+    transition: all 0.5s;
+    
+    &:hover {
+        background-image: linear-gradient(to right, #f1ff08, #c3f82c, #94f044, #62e658, #00da6b);
+    }
+}
