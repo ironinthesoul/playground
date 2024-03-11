@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Cellular Automata</title>
+    <meta name="description" content="Cellular Automata">
+    <meta name="author" content="Michael">
+
+    <script>
+        function cellular_automata(wolfram_rule) {
+
+            const canvas = document.getElementById("ca_canvas");
+            const ctx = canvas.getContext("2d");
+
+            const cellsize = 2;
+            const canvaswidth = canvas.offsetWidth;
+            const canvasheight = canvas.offsetHeight;
+            const rows = Math.floor(canvaswidth / cellsize);
+            let columns = Math.floor(canvasheight / cellsize);
+            if(columns % 2 == 0) {
+                columns--; // make sure there are an odd number of columns so there is a centre one
+            }
+            let grid = [];
+
+            for(let row_num = 0; row_num < rows; row_num++) {
+                grid[row_num] = [];
+                for(let col_num = 0; col_num < columns; col_num++) {
+
+                    let val = 0;
+                    // On the first row, only the centre cell must be active
+                    if(row_num == 0) {
+                        if(col_num == Math.ceil(columns / 2)) {
+                            val = 1;
+                        }
+                    }
+                    else {
+                        const previous_col = grid[row_num - 1];
+
+                        const cell_current = previous_col[col_num];
+                        const cell_left = previous_col[col_num - 1] ? previous_col[col_num - 1] : 0;
+                        const cell_right = previous_col[col_num + 1] ? previous_col[col_num + 1] : 0;
+
+                        val = automata_rule(cell_left, cell_current, cell_right, wolfram_rule);
+
+                    }
+                    grid[row_num][col_num] = val;
+                    ctx.fillStyle = val ? "#000" : "#fff";
+                    ctx.fillRect(col_num * cellsize, row_num * cellsize, cellsize, cellsize);
+                }
+            }
+        }
+
+        function automata_rule(cell_left, cell_current, cell_right, wolfram_rule) {
+
+            // https://mathworld.wolfram.com/ElementaryCellularAutomaton.html
+
+            // Wolfram's cellular automata rule consist of 256 different sets which is the total number of ways that
+            // 8 bits can be arranged. Each rule is and integer that is the decimal value of the binary 8 bits.
+            // So, we can conver the rule to bits by:
+            const ruleset = parseInt(wolfram_rule).toString(2).padStart(8, "0");
+
+
+            // And then calculate the value by looking at the position in the string we created above that is
+            // the integer position based on the current left, current and right cell values concatenated.
+            // But, the rules run in inverse so we just subrtract this valu from the max which is 7:
+            const new_val = 7 - parseInt("" + cell_left + cell_current + cell_right, 2);
+
+            return parseInt(ruleset[new_val]);
+        }
+
+        window.onload = (event) => {
+            const selector = document.getElementById("ca_select");
+            const trigger = document.getElementById("ca_trigger");
+            for(let i = 1; i <= 256; i++) {
+                let option = document.createElement("option");
+                option.text = i;
+                option.value = i;
+                selector.appendChild(option);
+            }
+
+            trigger.addEventListener("click", () => {
+                cellular_automata(selector.options[selector.selectedIndex].value);
+            });
+        }
+    </script>
+    <style>
+        #ca_canvas {
+            width: 1200px;
+            height: 1200px;
+            background-color: #fff;
+            outline: solid 1px #fff;
+            margin-top: 1rem;
+        }
+        #ca_selector {
+            padding: 1rem 0;
+            text-align: center;
+        }
+        #ca_select {
+            font-size: 1.5rem;
+            padding: 0.5rem 1rem;
+            height: 47px;
+            border-top-left-radius: 0.5rem;
+            border-bottom-left-radius: 0.5rem;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            border: 1px solid #000;
+            border-right: none;
+        }
+        #ca_trigger {
+            font-size: 1.5rem;
+            padding: 0.5rem 1rem;
+            height: 47px;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            border-top-right-radius: 0.5rem;
+            border-bottom-right-radius: 0.5rem;
+            border: 1px solid #000;
+            background-color: #000;
+            color: #fff;
+        }
+        #ca_trigger:hover {
+            background-color: #666;
+        }
+
+
+    </style>
+</head>
+<body>
+    <div id="ca_selector">
+        <select id="ca_select"></select><button id="ca_trigger">Automate!</button>
+    </div>
+    <canvas id="ca_canvas" width="1200" height="1200"></canvas>
+</body>
+</html>
