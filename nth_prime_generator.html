@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Nth Prime Calculator</title>
+    <script>
+        // Just a bit of reading on calculating primes: https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes
+        // Not the approach I took but nice to see how it was solved two millennia ago!
+        
+        const isPrime = (num) => {
+            // Is a number prime or not?
+
+            if(num < 2) return false;
+            // if(num < 4) return true; //tiny speedbump
+
+            let prime = true;
+            for(let i=2; i <= num/2; i++) { // If we use the tiny speedbump then i starts at that integer + 1
+                if(num % i == 0) prime = false;
+            }
+            return prime;
+        }  
+
+        const primeArray = (num) => {
+            // Creates an array of all the primes up to `num`
+
+            let arr = [];
+            for(let i=1; i <= num; i++) {
+                if(isPrime(i)) arr.push(i);
+            }
+            return arr;
+        }
+        const nthPrime = (nth, max_loop = 1000) => {
+            // Calulates the nth prime
+
+            // There is no way to determine how big the nth prime might be
+            // Primes are not evenly spaced and up to a very big number they 
+            // are increasingly rare before becoming more dense.
+            // So, our little app must only test against a subset using `max_loop`
+            // The bigger this is, the slower it will run.
+            let result;
+            const primes = primeArray(max_loop);
+            if(primes.length < nth) result = "The " + getOrdinal(nth) + " prime is not in the first " + max_loop + " numbers";
+            else result = "The " + getOrdinal(nth) + " prime is " + primes[nth - 1]; // Arrays start at 0
+
+            return {
+                "count": "There are " + primes.length + " primes in the first " + max_loop + " numbers.",
+                "result": result
+            }
+        }
+
+        const getOrdinal = (n) => {
+            //Thanks internet. As this isn't really part of the challenge I stole this function
+            // I'm not sure I like the way it is done but it works.
+
+            let ord = 'th';
+            if (n % 10 == 1 && n % 100 != 11) ord = 'st';
+            else if (n % 10 == 2 && n % 100 != 12) ord = 'nd';
+            else if (n % 10 == 3 && n % 100 != 13) ord = 'rd';
+            return n + ord;
+        }
+
+        window.addEventListener('load', () => {
+            document.getElementById("calculate").addEventListener('click', () => {
+
+                document.getElementById("calculate").disabled = true;
+
+                let result;
+                const nth_prime = document.getElementById("nth_prime").value;
+                const max_input= document.getElementById("max_input").value;
+
+                if(!nth_prime) result = "Pick a number for nth Prime"
+                else result = nthPrime(nth_prime, max_input);
+                
+                document.getElementById("result").innerHTML = result['result'];
+                document.getElementById("count").innerHTML = result['count'];
+
+                document.getElementById("calculate").disabled = false;
+
+            }, false);
+        });
+
+
+    </script>
+    <!-- 
+        Bootstrap has its problems and isn't always a great choice but for this, it makes prettification really easy. 
+        I'm only loading the CSS though and not the JS as all I need is a few classes.
+    -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+  </head>
+  <body>
+    <h1 class="text-center display-1 mb-5">Nth Prime Calculator</h1>
+    <div class="container text-center">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="input-group mb-3">
+                    <span class="input-group-text">Maximum number</span>
+                    <input type="number" step="100" class="form-control" id="max_input" />
+                </div>   
+                <div class="input-group mb-3">
+                    <span class="input-group-text">Nth Prime</span>
+                    <input type="number" class="form-control" id="nth_prime" />
+                </div>
+                <button type="button" class="btn btn-primary" id="calculate">Calculate</button>
+                <h5 id="result" class="text-center display-5 mt-5"></h5>
+                <p id="count" class="text-center mt-5"></p>
+            </div>
+        </div>
+    </div>
+    <script>
+        // This is my test to assert my calculations are correct.
+        // primesfordays.com has an API I can use to get the primes.
+        // I can use these results to compare against mine.
+        // The test runs automatically, check your console for results
+
+        // You will certainly run in to CORS problems if you run this tst locally.
+        // You can fix that with a Chrome plugin (other browsers are available):
+        // https://chrome.google.com/webstore/detail/allow-cors-access-control/lhobafahddgcelffkeicbaginigeejlf
+
+        // I'm only testing up to 100 to not spam the API I'm using, but increase test_length for a more comprehensive test
+
+
+        const test = async () => {
+            const test_length = 100;
+            const primes = primeArray(test_length);
+
+            let response, json;
+            let results = [];
+            let i=1;
+            let j=0;
+            let test_result = "SUCCESS";
+            while (i < primes.length) {
+
+                response = await fetch("https://www.primesfordays.com/api/primes/isprime/" + primes[j]);
+                json = await response.json();
+
+                console.log("Testing " + primes[j] + "...");
+
+                results.push({
+                    "my_prime": primes[j],
+                    "is_valid": json['is_prime'],
+                    "my_pos": i,
+                    "their_pos": json['sequence_number'],
+                });
+
+                if(i != json['sequence_number']) test_result = "FAILED";
+                i++;
+                j++;
+            }
+            console.table(results);
+            console.log(test_result);
+        }
+        test(); // Run the test
+
+
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

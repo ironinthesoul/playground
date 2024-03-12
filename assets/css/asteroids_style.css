@@ -1,0 +1,53 @@
+body {
+  margin: 0;
+  padding: 0;
+}
+
+#scoreboxdiv {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+#highscoreboxdiv {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: right;
+}
+
+#instructionsdiv {
+  position: absolute;
+  bottom: 20px;
+  left: 0px;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1;
+}
+#instructionsdiv strong {
+  display: inline-block;
+  padding: 1px 5px;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 2px;
+  margin-left: 20px;
+  margin-right: 5px;
+  color: #000;
+}
+
+#gameoverdiv {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 150px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+}
