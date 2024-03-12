@@ -1,6 +1,6 @@
-# Fractals
-Just some fractal fun in Javascript.
+# Playground
+Just some fractal and other fun in Javascript.
 
-A samll number of JS pages that do maths type stuff in a fraphical way.
+A small number of JS pages that do maths type stuff in a graphical way.
 
-Load any HTML in a rowser and see what happens. All the pages are self-contained for simplicity.
+Load any HTML in a browser and see what happens. All the pages are (mostly) self-contained for simplicity.
