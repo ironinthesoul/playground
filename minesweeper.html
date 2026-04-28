@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Minesweeper</title>
+    <meta name="description" content="Minesweeper">
+    <meta name="author" content="Michael">
+
+    <script>
+        const boardSize = 9;
+        const fieldSize = 600;
+        const difficulty = 20;
+        let firstClick = true;
+
+
+        class MineField {
+            constructor(fieldSize, boardSize, difficulty) {
+                this.fieldSize = fieldSize;
+                this.boardSize = boardSize;
+                this.difficulty = difficulty;
+                this.field = [];
+                this.revealCell = this.revealCell.bind(this);
+                this.placeFlag = this.placeFlag.bind(this);
+                this.cascadedCells = new Set();
+                this.mines = Math.floor(this.boardSize * this.boardSize * this.difficulty / 100);
+                if (!this.mines) this.mines = 1;
+                this.safeCells = 0;
+
+                for (let y = 0; y < boardSize; y++) {
+                    this.field[y] = [];
+                    for (let x = 0; x < boardSize; x++) {
+                        this.field[y][x] = 0;
+                    }
+                }
+            }
+
+            placeMines(ignoreX=0, ignoreY=0) {
+                for (let i = 0; i < this.mines; i++) {
+                    const xPos = Math.floor(Math.random() * this.boardSize);
+                    const yPos = Math.floor(Math.random() * this.boardSize);
+                    if (xPos === Number(ignoreX) && yPos === Number(ignoreY)) {
+                        i--;
+                        continue;
+                    }
+                    this.field[yPos][xPos] = -1;
+                }
+            }
+
+            placeHints() {
+                for (let y = 0; y < this.boardSize; y++) {
+                    for (let x = 0; x < this.boardSize; x++) {
+
+                        if(this.field[y][x] === -1) {
+                            continue;
+                        }
+                        this.field[y][x] = this.adjacentMineCounter(x, y);
+                    }
+                }
+            }
+
+            adjacentMineCounter(xPos, yPos) {
+                const adjacentCells = this.getAdjacentCells(xPos, yPos);
+                let minecount = 0;
+
+                for(const cell of adjacentCells) {
+                    const { x: currentX, y: currentY } = cell;
+                    if(this.field[currentY]?.[currentX] === -1) {
+                        minecount++;
+                    }
+                }
+                return minecount;
+            }
+
+
+            getAdjacentCells(xPos, yPos) {
+                let adjacentCells = [];
+
+                for(let y = -1; y <= 1; y++) {
+                    for(let x = -1; x <= 1; x++) {
+                        const currentX = Number(xPos) + x;
+                        const currentY = Number(yPos) + y;
+
+                        if(
+                            currentX >= 0 
+                            && currentX < this.boardSize 
+                            && currentY >= 0 
+                            && currentY < this.boardSize
+                        ) {
+                            adjacentCells.push({ x: currentX, y: currentY });
+                        }
+                    }
+                }
+                return adjacentCells;
+            }
+
+            drawBoard() {
+                for (let y = 0; y < this.boardSize; y++) {
+                    for (let x = 0; x < this.boardSize; x++) {
+
+                        const minefield = document.getElementById("mineFieldSVG");
+                        minefield.setAttribute("width", this.fieldSize);
+                        minefield.setAttribute("height", this.fieldSize);
+
+                        const cellSize = this.fieldSize / this.boardSize;
+
+                        const cell = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                        cell.setAttribute("x", x * cellSize);
+                        cell.setAttribute("y", y * cellSize);
+                        cell.setAttribute("width", cellSize);
+                        cell.setAttribute("height", cellSize);
+                        cell.setAttribute("class", "cell");
+
+                        cell.dataset.fieldX = x;
+                        cell.dataset.fieldY = y;
+
+                        minefield.appendChild(cell);
+                        cell.addEventListener("click", this.revealCell);
+                        cell.addEventListener("contextmenu", this.placeFlag);
+
+                    }
+                }
+            }
+
+            revealCell(event) {
+                const cell = event.target;
+                const x = cell.dataset.fieldX;
+                const y = cell.dataset.fieldY;
+
+                if (firstClick) {
+                    this.placeMines(x, y);
+                    this.placeHints();
+                    firstClick = false;
+                    // console.log(this.field);
+                }
+                
+                if (cell.dataset.revealed == "true") return;
+
+                const targetCellValue = this.field[y][x];
+
+                switch(targetCellValue) {
+                    case -1:
+                        this.endGame("lose");
+                        break;
+                    case 0:
+                        this.cascadedCells.clear();
+                        this.cascadeCells(x, y);
+
+                        break;
+                    default:
+                        this.showCellValue(x, y);
+                }
+            }
+
+            placeFlag(event) {
+                event.preventDefault();
+                const cell = event.target;
+                const x = cell.dataset.fieldX;
+                const y = cell.dataset.fieldY;
+
+                if (cell.dataset.flagged === "true") {
+                    cell.dataset.flagged = "false";
+                    cell.dataset.revealed = "false";
+                    this.safeCells--;
+                    const textCell = document.querySelector(`text[data-field-x='${x}'][data-field-y='${y}']`);
+                    if (textCell) {
+                        textCell.remove();
+                    }
+                    return;
+                }
+
+                if (this.field[y][x] === -1) {
+                    this.safeCells++;
+                }
+                cell.dataset.revealed = "true";
+                cell.dataset.flagged = "true";
+                this.showCellValue(x, y, true);
+                if (this.safeCells === this.mines) {
+                    this.endGame("win");
+                }
+            }
+
+            endGame(result) {
+                for (let y = 0; y < this.boardSize; y++) {
+                    for (let x = 0; x < this.boardSize; x++) {    
+                        const cell = document.querySelector(`rect[data-field-x='${x}'][data-field-y='${y}']`);
+                        if (cell && cell.dataset.revealed !== "true") {
+                            this.showCellValue(x, y);
+                        }
+                    }
+                }
+                if (result === "win") {
+                    alert("Congratulations! You win!");
+                } else {
+                    alert(`Game Over! You lose!`);
+                }
+            }
+
+            cascadeCells(xPos, yPos) {
+                this.showCellValue(xPos, yPos);
+                const adjacentCells = this.getAdjacentCells(xPos, yPos);
+
+                for(const cell of adjacentCells) {
+                    const { x, y } = cell;
+                    const targetCellValue = this.field[y][x];
+
+                    if(this.cascadedCells.has(`${x},${y}`)) {
+                        continue;
+                    }
+                    this.cascadedCells.add(`${x},${y}`);
+
+                    switch(targetCellValue) {
+                        case 0:
+                            this.cascadeCells(x, y);
+                            break;
+                        default:
+                            this.showCellValue(x, y);
+                    } 
+                }
+            }
+
+            showCellValue(xPos, yPos, isFlag=false) {
+                const cell = document.querySelector(`rect[data-field-x='${xPos}'][data-field-y='${yPos}']`);
+                if (cell) {
+                    const cellSize = this.fieldSize / this.boardSize;
+
+                    const cellValue = this.field[yPos][xPos];
+                    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    text.setAttribute("x", xPos * cellSize + (cellSize / 2));
+                    text.setAttribute("y", yPos * cellSize + (cellSize / 2));
+                    text.setAttribute("text-anchor", "middle");
+                    text.setAttribute("dominant-baseline", "middle");
+                    text.setAttribute("font-size", cellSize / 2);
+                    text.dataset.fieldX = xPos;
+                    text.dataset.fieldY = yPos;
+
+                    if (isFlag) {
+                        text.textContent = "🚩";
+                    } else {
+                        switch(cellValue) {
+                            case -1:
+                                text.textContent = "💣";
+                                break;
+                            case 0:
+                                text.textContent = "";
+                                break;
+                            default:
+                                text.textContent = cellValue;
+                        }
+                    }
+                    
+                    cell.parentNode.appendChild(text);
+                    cell.dataset.revealed = "true";
+                }
+            }
+
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const mineField = new MineField(fieldSize, boardSize, difficulty);
+            mineField.drawBoard();
+        });
+
+
+
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        #mineFieldSVG {
+            border: 1px solid black;
+            margin-top: 20px;
+        }
+        rect.cell {
+            stroke: black;
+            stroke-width: 1px;
+            cursor: pointer;
+            fill: transparent;
+        } 
+        rect[data-revealed="true"] {
+            fill: white;
+            cursor: default;
+        } 
+        rect[data-flagged="true"] {
+            cursor: pointer;
+        } 
+        text {
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body> 
+    <h1>Minesweeper</h1>
+    <svg id="mineFieldSVG" width="450" height="450">
+        <defs> 
+            <linearGradient id="boardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#07c700" />
+                <stop offset="100%" stop-color="#d3fc03" />
+            </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="100%" height="100%" fill="url(#boardGradient)" />
+    </svg>
+
+</body>
+</html>
