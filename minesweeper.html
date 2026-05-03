@@ -7,14 +7,18 @@
     <meta name="author" content="Michael">
 
     <script>
-        const boardSize = 9;
         const fieldSize = 600;
-        const difficulty = 20;
         let firstClick = true;
 
 
         class MineField {
-            constructor(fieldSize, boardSize, difficulty) {
+            /**
+             * Creates a minefield game state and initializes an empty board.
+             * @param {number} fieldSize - Pixel size of the square SVG board.
+             * @param {number} boardSize - Number of cells per row/column.
+             * @param {number} difficulty - Mine density percentage.
+             */
+            constructor(fieldSize, boardSize, difficulty, type) {
                 this.fieldSize = fieldSize;
                 this.boardSize = boardSize;
                 this.difficulty = difficulty;
@@ -25,6 +29,8 @@
                 this.mines = Math.floor(this.boardSize * this.boardSize * this.difficulty / 100);
                 if (!this.mines) this.mines = 1;
                 this.safeCells = 0;
+                this.flagCount = 0;
+                this.type = type;
 
                 for (let y = 0; y < boardSize; y++) {
                     this.field[y] = [];
@@ -34,18 +40,41 @@
                 }
             }
 
+            /**
+             * Randomly places mines while keeping the first-click area safe.
+             * @param {number|string} [ignoreX=0] - X position to keep safe.
+             * @param {number|string} [ignoreY=0] - Y position to keep safe.
+             * @returns {void}
+             */
             placeMines(ignoreX=0, ignoreY=0) {
-                for (let i = 0; i < this.mines; i++) {
-                    const xPos = Math.floor(Math.random() * this.boardSize);
-                    const yPos = Math.floor(Math.random() * this.boardSize);
-                    if (xPos === Number(ignoreX) && yPos === Number(ignoreY)) {
-                        i--;
-                        continue;
+
+                const boardPositions = new Set();
+                for (let y = 0; y < this.boardSize; y++) {
+                    for (let x = 0; x < this.boardSize; x++) {
+                        boardPositions.add(`${x},${y}`);
                     }
-                    this.field[yPos][xPos] = -1;
                 }
+
+                const adjacentCells = this.getAdjacentCells(ignoreX, ignoreY);
+                for (const cell of adjacentCells) {
+                    const { x, y } = cell;
+                    boardPositions.delete(`${x},${y}`);
+                }
+
+                const availablePositions = Array.from(boardPositions);
+                const shuffledPositions = this.shuffleCells(availablePositions);
+                const minePlacements = shuffledPositions.slice(0, this.mines);
+
+                for (const position of minePlacements) {
+                    const [x, y] = position.split(",").map(Number);
+                    this.field[y][x] = -1;
+                } 
             }
 
+            /**
+             * Computes and stores numeric hints for all non-mine cells.
+             * @returns {void}
+             */
             placeHints() {
                 for (let y = 0; y < this.boardSize; y++) {
                     for (let x = 0; x < this.boardSize; x++) {
@@ -58,6 +87,46 @@
                 }
             }
 
+            bombIcon() {
+                switch(this.type) {
+                    case "faeries":
+                        return "🧚";
+                    case "trolls":
+                        return "🧌";
+                    case "ghosts":
+                        return "👻";
+                    case "lions":
+                        return "🦁";
+                    case "frogs":
+                        return "🐸";
+                    default:
+                        return "💣";
+                }
+            }
+            flagIcon() {
+                switch(this.type) {
+                    case "faeries":
+                        return "✨";
+                    case "trolls":
+                        return "🪓";
+                    case "ghosts":
+                        return "🔫";
+                    case "lions":
+                        return "📸";
+                    case "frogs":
+                        return "🪰";
+                    default:
+                        return "🚩";
+                }
+            }
+
+
+            /**
+             * Counts adjacent mines for a given cell coordinate.
+             * @param {number|string} xPos - Cell X coordinate.
+             * @param {number|string} yPos - Cell Y coordinate.
+             * @returns {number} Number of adjacent mines.
+             */
             adjacentMineCounter(xPos, yPos) {
                 const adjacentCells = this.getAdjacentCells(xPos, yPos);
                 let minecount = 0;
@@ -72,6 +141,12 @@
             }
 
 
+            /**
+             * Returns all valid neighbor coordinates around a cell.
+             * @param {number|string} xPos - Cell X coordinate.
+             * @param {number|string} yPos - Cell Y coordinate.
+             * @returns {{x: number, y: number}[]} Adjacent cell coordinates.
+             */
             getAdjacentCells(xPos, yPos) {
                 let adjacentCells = [];
 
@@ -93,6 +168,10 @@
                 return adjacentCells;
             }
 
+            /**
+             * Draws all SVG cell rectangles and wires mouse handlers.
+             * @returns {void}
+             */
             drawBoard() {
                 for (let y = 0; y < this.boardSize; y++) {
                     for (let x = 0; x < this.boardSize; x++) {
@@ -121,6 +200,11 @@
                 }
             }
 
+            /**
+             * Handles left-click reveal behavior for a cell.
+             * @param {MouseEvent} event - Click event from a cell rectangle.
+             * @returns {void}
+             */
             revealCell(event) {
                 const cell = event.target;
                 const x = cell.dataset.fieldX;
@@ -151,6 +235,11 @@
                 }
             }
 
+            /**
+             * Handles right-click flag toggling for a cell.
+             * @param {MouseEvent} event - Context menu event from a cell rectangle.
+             * @returns {void}
+             */
             placeFlag(event) {
                 event.preventDefault();
                 const cell = event.target;
@@ -160,10 +249,15 @@
                 if (cell.dataset.flagged === "true") {
                     cell.dataset.flagged = "false";
                     cell.dataset.revealed = "false";
-                    this.safeCells--;
+                    if (this.field[y][x] === -1) {
+                        this.safeCells--;
+                    }
+                    this.flagCount--;
                     const textCell = document.querySelector(`text[data-field-x='${x}'][data-field-y='${y}']`);
                     if (textCell) {
                         textCell.remove();
+                        const mineCount = document.getElementById("mineCount");
+                        mineCount.textContent = this.flagCount;
                     }
                     return;
                 }
@@ -171,14 +265,24 @@
                 if (this.field[y][x] === -1) {
                     this.safeCells++;
                 }
+                this.flagCount++;
+                const mineCount = document.getElementById("mineCount");
+                mineCount.textContent = this.flagCount;
+
                 cell.dataset.revealed = "true";
                 cell.dataset.flagged = "true";
                 this.showCellValue(x, y, true);
+
                 if (this.safeCells === this.mines) {
                     this.endGame("win");
                 }
             }
 
+            /**
+             * Reveals the full board and announces game result.
+             * @param {"win"|"lose"} result - Final game state.
+             * @returns {void}
+             */
             endGame(result) {
                 for (let y = 0; y < this.boardSize; y++) {
                     for (let x = 0; x < this.boardSize; x++) {    
@@ -195,6 +299,12 @@
                 }
             }
 
+            /**
+             * Recursively reveals connected empty cells and their boundaries.
+             * @param {number|string} xPos - Starting cell X coordinate.
+             * @param {number|string} yPos - Starting cell Y coordinate.
+             * @returns {void}
+             */
             cascadeCells(xPos, yPos) {
                 this.showCellValue(xPos, yPos);
                 const adjacentCells = this.getAdjacentCells(xPos, yPos);
@@ -218,6 +328,13 @@
                 }
             }
 
+            /**
+             * Reveals a cell by writing its value (or a flag icon) into SVG text.
+             * @param {number|string} xPos - Cell X coordinate.
+             * @param {number|string} yPos - Cell Y coordinate.
+             * @param {boolean} [isFlag=false] - Whether to render a flag icon.
+             * @returns {void}
+             */
             showCellValue(xPos, yPos, isFlag=false) {
                 const cell = document.querySelector(`rect[data-field-x='${xPos}'][data-field-y='${yPos}']`);
                 if (cell) {
@@ -234,11 +351,11 @@
                     text.dataset.fieldY = yPos;
 
                     if (isFlag) {
-                        text.textContent = "🚩";
+                        text.textContent = this.flagIcon();
                     } else {
                         switch(cellValue) {
                             case -1:
-                                text.textContent = "💣";
+                                text.textContent = this.bombIcon();
                                 break;
                             case 0:
                                 text.textContent = "";
@@ -253,24 +370,133 @@
                 }
             }
 
+            /**
+             * Returns a shuffled copy of an array using Fisher-Yates.
+             * @param {string[]} arr - Array of board position keys.
+             * @returns {string[]} New shuffled array.
+             */
+            shuffleCells(arr) {
+                const shuffled = [...arr];
+                // Fischer-Yates
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                return shuffled;
+            }
+
         }
 
+        const hasSelectedValue = (selectElement) => {
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            return selectedOption && selectedOption.hasAttribute("value") && selectedOption.value !== "";
+        };
+
         document.addEventListener("DOMContentLoaded", () => {
-            const mineField = new MineField(fieldSize, boardSize, difficulty);
-            mineField.drawBoard();
+            const startGameButton = document.getElementById("startGame");
+            const difficultySelect = document.getElementById("difficulty");
+            const boardSizeSelect = document.getElementById("boardSize");
+            const gameTypeSelect = document.getElementById("gameType");
+            const minefieldSvg = document.getElementById("mineFieldSVG");
+
+            startGameButton.addEventListener("click", () => {
+                if (!hasSelectedValue(difficultySelect) || !hasSelectedValue(boardSizeSelect) || !hasSelectedValue(gameTypeSelect)) {
+                    alert("Please select a value for difficulty, board size, and game type before starting.");
+                    return;
+                }
+
+                firstClick = true;
+                minefieldSvg.querySelectorAll("rect.cell, text").forEach((node) => node.remove());
+
+                const selectedDifficulty = Number(difficultySelect.value);
+                const selectedBoardSize = Number(boardSizeSelect.value);
+                const selectedType = gameTypeSelect.value;
+
+                const mineField = new MineField(fieldSize, selectedBoardSize, selectedDifficulty, selectedType);
+                mineField.drawBoard();
+
+                const totalMines = document.getElementById("totalMines");
+                totalMines.textContent = mineField.mines;
+
+                const mineCount = document.getElementById("mineCount");
+                mineCount.textContent = "0";
+
+                const bombIcon = document.getElementById("bombIcon");
+                bombIcon.textContent = mineField.bombIcon();
+            });
         });
-
-
 
     </script>
     <style>
+        :root {
+            --form-border: #ced4da;
+            --form-bg: #fff;
+            --form-text: #212529;
+            --form-focus: #86b7fe;
+            --btn-bg: #0d6efd;
+            --btn-bg-hover: #0b5ed7;
+            --btn-text: #fff;
+            --radius: 0.375rem;
+        }
+
         body {
             font-family: Arial, sans-serif;
             text-align: center;
         }
+
+        #gameConsole {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: center;
+            width: fit-content;
+            margin: 0 auto 1rem;
+        }
+
+        #gameConsole select,
+        #gameConsole button {
+            font: inherit;
+            line-height: 1.5;
+            padding: 0.375rem 0.75rem;
+            border-radius: var(--radius);
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out, background-color 0.15s ease-in-out;
+        }
+
+        #gameConsole select {
+            color: var(--form-text);
+            background: var(--form-bg);
+            border: 1px solid var(--form-border);
+            min-height: 2.4rem;
+        }
+
+        #gameConsole select:focus,
+        #gameConsole button:focus {
+            outline: 0;
+            border-color: var(--form-focus);
+            box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--form-focus) 35%, transparent);
+        }
+
+        #startGame {
+            border: 1px solid var(--btn-bg);
+            background: var(--btn-bg);
+            color: var(--btn-text);
+            cursor: pointer;
+        }
+
+        #startGame:hover {
+            background: var(--btn-bg-hover);
+            border-color: var(--btn-bg-hover);
+        }
+
+        #startGame:active {
+            transform: translateY(1px);
+        }
+
         #mineFieldSVG {
+            display: block;
             border: 1px solid black;
-            margin-top: 20px;
+            margin: 20px auto 0;
         }
         rect.cell {
             stroke: black;
@@ -291,8 +517,35 @@
     </style>
 </head>
 <body> 
-    <h1>Minesweeper</h1>
-    <svg id="mineFieldSVG" width="450" height="450">
+    <h1>ThingFinder</h1>
+    <form id="gameConsole">
+            <select id="difficulty" name="difficulty">
+                <option value="">-- Difficulty --</option>
+                <option value="10">Easy</option>
+                <option value="15">Medium</option>
+                <option value="20">Hard</option>
+            </select>
+            <select id="boardSize" name="boardSize">
+                <option value="">-- Board Size --</option>
+                <option value="5">Tiny</option>
+                <option value="9">Small</option>
+                <option value="15">Medium</option>
+                <option value="25">Large</option>
+                <option value="40">Mega</option>
+            </select>  
+            <select id="gameType">
+                <option value="">-- Game Type --</option>
+                <option value="bombs">Bombs</option>
+                <option value="faeries">Faeries</option>
+                <option value="trolls">Trolls</option>
+                <option value="ghosts">Ghosts</option>
+                <option value="lions">Lions</option>
+                <option value="frogs">Frogs</option>
+            </select>
+            <button type="button" id="startGame">Start Game</button>
+    </form>
+
+    <svg id="mineFieldSVG" width="600" height="600">
         <defs> 
             <linearGradient id="boardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stop-color="#07c700" />
@@ -301,6 +554,7 @@
         </defs>
         <rect x="0" y="0" width="100%" height="100%" fill="url(#boardGradient)" />
     </svg>
-
+    <h2><span id="bombIcon">?</span> <span id="mineCount">0</span>/<span id="totalMines">0</span></h2>
+    <p>Left-click to reveal. Right-click to flag.</p>
 </body>
 </html>
